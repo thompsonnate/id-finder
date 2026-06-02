@@ -12,6 +12,7 @@ Sources:
 
 import asyncio
 import logging
+import os
 import re
 import shutil
 import httpx
@@ -45,7 +46,7 @@ def _discogs_web_url(item: dict) -> Optional[str]:
     return resource.replace("api.discogs.com", "www.discogs.com").replace(
         "/releases/", "/release/"
     ).replace("/artists/", "/artist/").replace("/labels/", "/label/") or None
-DISCOGS_TOKEN = "pHFtzwaohFgNfVMfdDzwjQtLDOHrYPYBVnauocxn"
+DISCOGS_TOKEN = os.environ.get("DISCOGS_TOKEN", "pHFtzwaohFgNfVMfdDzwjQtLDOHrYPYBVnauocxn")
 DISCOGS_HEADERS = {
     "User-Agent": "IDFinder/0.1 (dev-build)",
     "Authorization": f"Discogs token={DISCOGS_TOKEN}",
@@ -53,7 +54,7 @@ DISCOGS_HEADERS = {
 
 # Free Last.fm key (public read-only, rate-limited)
 # Replace with your own key from https://www.last.fm/api/account/create
-LASTFM_API_KEY = "60983b58ba44ec18da9ccc0b264b08d4"
+LASTFM_API_KEY = os.environ.get("LASTFM_API_KEY", "60983b58ba44ec18da9ccc0b264b08d4")
 
 
 @dataclass

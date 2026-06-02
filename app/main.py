@@ -11,9 +11,14 @@ import logging
 import time
 import os
 import httpx
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
+# index.html lives one level up from this file (project root)
+FRONTEND_PATH = Path(__file__).parent.parent / "index.html"
 
 from app.fingerprint import lookup_song, SongFeatures
 from app.candidates import fetch_all_candidates, enrich_candidates, enrich_seed_from_discogs, CandidateSong
@@ -59,7 +64,10 @@ def _candidate_from_dict(d: dict) -> CandidateSong:
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "message": "Underground Music Recommender API", "mock_mode": USE_MOCKS}
+    """Serve the frontend."""
+    if FRONTEND_PATH.exists():
+        return FileResponse(FRONTEND_PATH)
+    return {"status": "ok", "message": "ID Finder API", "mock_mode": USE_MOCKS}
 
 
 @app.get("/health")
