@@ -238,11 +238,47 @@
     .breakdown {
       margin-top: 0.7rem;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 0.3rem;
     }
-    .bar-group { display: flex; flex-direction: column; gap: 0.2rem; }
-    .bar-label { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .bar-group { display: flex; flex-direction: column; gap: 0.2rem; position: relative; }
+    .bar-label {
+      font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
+      cursor: default;
+    }
+    .bar-label[data-tip]:hover::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1a24;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.72rem;
+      font-weight: 400;
+      letter-spacing: 0;
+      text-transform: none;
+      white-space: normal;
+      width: 180px;
+      padding: 0.45rem 0.65rem;
+      line-height: 1.4;
+      z-index: 10;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .bar-label[data-tip]:hover::before {
+      content: "";
+      position: absolute;
+      bottom: calc(100% + 1px);
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: var(--border);
+      z-index: 11;
+      pointer-events: none;
+    }
     .bar-track {
       height: 4px;
       background: var(--surface2);
@@ -445,13 +481,12 @@
 
     const bd = r.breakdown || {};
     const bars = [
-      { label: "Audio",      cls: "bar-audio",       val: bd.audio ?? 0 },
-      { label: "Genre",      cls: "bar-genre",        val: bd.genre ?? 0 },
-      { label: "Community",  cls: "bar-community",    val: bd.community ?? 0 },
-      { label: "Underground",cls: "bar-underground",  val: bd.underground ?? 0 },
+      { label: "Audio",       cls: "bar-audio",       val: bd.audio ?? 0,       tip: "BPM and musical key similarity to your seed track. Scored using tempo proximity and circle-of-fifths compatibility." },
+      { label: "Genre",       cls: "bar-genre",        val: bd.genre ?? 0,       tip: "How closely this track's genre and style tags match the seed. Uses exact tag overlap plus electronic subgenre proximity scoring." },
+      { label: "Underground", cls: "bar-underground",  val: bd.underground ?? 0, tip: "Rarity bonus. Rewards low view counts, small independent channels, and non-major-label releases. Penalises VEVO and official label uploads." },
     ].map(b => `
       <div class="bar-group">
-        <div class="bar-label">${b.label}</div>
+        <div class="bar-label" data-tip="${b.tip}">${b.label}</div>
         <div class="bar-track"><div class="bar-fill ${b.cls}" style="width:${b.val}%"></div></div>
         <div class="bar-value">${Math.round(b.val)}%</div>
       </div>`).join("");
