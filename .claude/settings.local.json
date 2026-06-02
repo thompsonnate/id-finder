@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(mkdir -p \"/Users/natethompson/Documents/Claude Music Intro Project/.claude\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(pip3.11 install *)",
+      "Bash(/Users/natethompson/Library/Python/3.11/bin/uvicorn app.main:app --port 8000)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s -X POST http://localhost:8000/recommend -H 'Content-Type: application/json' -d '{\"title\": \"Paranoid Android\", \"artist\": \"Radiohead\", \"top_n\": 10}')",
+      "Bash(python3.11 -m json.tool)",
+      "Bash(python3.11 -c ' *)",
+      "Bash(curl -sv -X POST http://localhost:8000/recommend -H 'Content-Type: application/json' -d '{\"title\": \"PBD\", \"artist\": \"Cobblestone Jazz\", \"top_n\": 10}')",
+      "Bash(curl -s -w '\\\\nHTTP_STATUS:%{http_code}' -X POST http://localhost:8000/recommend -H 'Content-Type: application/json' -d '{\"title\": \"PBD\", \"artist\": \"Cobblestone Jazz\", \"top_n\": 10}')",
+      "Bash(curl -s -X POST http://localhost:8000/cache/clear)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Initial commit — ID Finder *)"
+    ]
+  }
+}
