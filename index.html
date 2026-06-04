@@ -226,6 +226,7 @@
     .badge-musicbrainz { background: #1a2a1a; color: #3ecf8e; }
     .badge-discogs  { background: #1a1520; color: #c084fc; }
     .badge-underground { background: #2a1500; color: var(--underground); }
+    .badge-samelabel   { background: #0f2a1a; color: #4ade80; }
     .badge-views {
       font-size: 0.72rem;
       color: var(--muted);
@@ -476,6 +477,7 @@
 
     const sourceBadge = `<span class="badge badge-${r.source}">${esc(r.source)}</span>`;
     const undergroundBadge = r.is_underground ? `<span class="badge badge-underground">underground</span>` : "";
+    const sameLabelBadge = r.same_label ? `<span class="badge badge-samelabel">same label</span>` : "";
     const viewsBadge = r.view_count != null
       ? `<span class="badge-views">${formatViews(r.view_count)} views</span>` : "";
 
@@ -500,7 +502,7 @@
         <div class="card-body">
           <div class="card-title">${esc(r.title)}</div>
           <div class="card-artist">${esc(r.artist)}</div>
-          <div class="badges">${sourceBadge}${undergroundBadge}${viewsBadge}</div>
+          <div class="badges">${sourceBadge}${undergroundBadge}${sameLabelBadge}${viewsBadge}</div>
           <div class="breakdown">${bars}</div>
         </div>
 

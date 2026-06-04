@@ -138,9 +138,8 @@ logger = logging.getLogger(__name__)
 
 WEIGHTS = {
     "audio":       0.40,
-    "genre":       0.30,
-    "community":   0.20,
-    "underground": 0.10,
+    "genre":       0.40,
+    "underground": 0.20,
 }
 
 # BPM tolerance: scores decay from 1.0 → 0.0 over this range (in BPM)
@@ -169,11 +168,11 @@ class ScoredResult:
     youtube_id: Optional[str]
     is_underground: bool
     view_count: Optional[int]
+    same_label: bool = False
 
     # Score breakdown for transparency / debugging
     score_audio: float = 0.0
     score_genre: float = 0.0
-    score_community: float = 0.0
     score_underground: float = 0.0
 
     genre_tags: list = field(default_factory=list)
@@ -190,10 +189,10 @@ class ScoredResult:
             "youtube_id": self.youtube_id,
             "is_underground": self.is_underground,
             "view_count": self.view_count,
+            "same_label": self.same_label,
             "breakdown": {
                 "audio": round(self.score_audio * 100, 1),
                 "genre": round(self.score_genre * 100, 1),
-                "community": round(self.score_community * 100, 1),
                 "underground": round(self.score_underground * 100, 1),
             },
             "genre_tags": self.genre_tags,
@@ -214,19 +213,17 @@ def score_and_rank(
 
     scored = []
     for c in candidates:
-        s_audio      = _score_audio(seed, c)
-        s_genre      = _score_genre(seed, c)
-        s_community  = _score_community(c)
+        s_audio       = _score_audio(seed, c)
+        s_genre       = _score_genre(seed, c)
         s_underground = c.underground_score
 
         weighted = (
             WEIGHTS["audio"]       * s_audio +
             WEIGHTS["genre"]       * s_genre +
-            WEIGHTS["community"]   * s_community +
             WEIGHTS["underground"] * s_underground
         )
 
-        scored.append((weighted, s_audio, s_genre, s_community, s_underground, c))
+        scored.append((weighted, s_audio, s_genre, s_underground, c))
 
     # Sort descending by weighted score
     scored.sort(key=lambda x: x[0], reverse=True)
@@ -240,7 +237,7 @@ def score_and_rank(
     for entry in scored:
         # Normalise joint credits ("Artist A / Artist B", "A & B", "A, B")
         # so they don't bypass the per-artist cap
-        raw = entry[5].artist.lower().strip()
+        raw = entry[4].artist.lower().strip()
         artist_key = re.split(r"[/,&]|\bfeat\b|\bvs\b", raw)[0].strip()
         if artist_counts.get(artist_key, 0) < MAX_PER_ARTIST:
             diverse.append(entry)
@@ -249,7 +246,7 @@ def score_and_rank(
             break
 
     results = []
-    for rank, (weighted, s_audio, s_genre, s_comm, s_under, c) in enumerate(diverse, 1):
+    for rank, (weighted, s_audio, s_genre, s_under, c) in enumerate(diverse, 1):
         results.append(ScoredResult(
             rank=rank,
             title=c.title,
@@ -260,9 +257,9 @@ def score_and_rank(
             youtube_id=c.youtube_id,
             is_underground=c.is_underground,
             view_count=c.view_count,
+            same_label=c.same_label,
             score_audio=s_audio,
             score_genre=s_genre,
-            score_community=s_comm,
             score_underground=s_under,
             genre_tags=c.genre_tags,
             mood_tags=c.mood_tags,
@@ -351,28 +348,6 @@ def _score_genre(seed: SongFeatures, candidate: CandidateSong) -> float:
 
     return min(1.0, jaccard + cluster_bonus + partial_bonus)
 
-
-def _score_community(candidate: CandidateSong) -> float:
-    """
-    Community signal score [0, 1].
-    Combines Last.fm's own similarity score with source reliability.
-    """
-    base = 0.0
-
-    # Last.fm match is already 0–1, most reliable signal we have
-    if candidate.lastfm_match > 0:
-        base = candidate.lastfm_match
-    else:
-        # No Last.fm data — use source as a proxy for community validation
-        source_scores = {
-            "lastfm": 0.7,
-            "discogs": 0.65,   # vinyl catalog — highly curated, strong signal
-            "musicbrainz": 0.5,
-            "youtube": 0.3,
-        }
-        base = source_scores.get(candidate.source, 0.3)
-
-    return base
 
 
 def _bpm_similarity(bpm_a: float, bpm_b: float) -> float:
