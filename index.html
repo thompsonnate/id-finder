@@ -462,11 +462,6 @@
       return;
     }
 
-    if (strong.length < 10) {
-      partialWarn.textContent = `Only ${strong.length} track${strong.length === 1 ? "" : "s"} scored above the ${MIN_MATCH_PCT}% match threshold — showing what we found.${dropped ? ` (${dropped} result${dropped===1?"":"s"} below threshold hidden)` : ""}`;
-      partialWarn.classList.add("visible");
-    }
-
     statusEl.textContent = "";
     resultsEl.innerHTML = strong.map((r, i) => renderCard(r, i)).join("");
   }
@@ -484,8 +479,8 @@
     const bd = r.breakdown || {};
     const bars = [
       { label: "Audio",       cls: "bar-audio",       val: bd.audio ?? 0,       tip: "BPM and musical key similarity to your seed track. Scored using tempo proximity and circle-of-fifths compatibility." },
-      { label: "Genre",       cls: "bar-genre",        val: bd.genre ?? 0,       tip: "How closely this track's genre and style tags match the seed. Uses exact tag overlap plus electronic subgenre proximity scoring." },
-      { label: "Underground", cls: "bar-underground",  val: bd.underground ?? 0, tip: "Rarity bonus. Rewards low view counts, small independent channels, and non-major-label releases. Penalises VEVO and official label uploads." },
+      { label: "Genre",       cls: "bar-genre",        val: bd.genre ?? 0,       tip: "How closely this track's genre and style tags match the seed." },
+      { label: "Underground", cls: "bar-underground",  val: bd.underground ?? 0, tip: "Rarity score based on how many Discogs collectors own this record. Fewer 'Haves' = higher underground score." },
     ].map(b => `
       <div class="bar-group">
         <div class="bar-label" data-tip="${b.tip}">${b.label}</div>

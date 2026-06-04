@@ -183,9 +183,17 @@ async def fetch_all_candidates(
             seen.add(key)
             unique.append(c)
 
-    # Remove the seed song itself
+    # Remove the seed song itself and any candidate whose title is too similar
+    # (e.g. "Crackiceboom House EP" when the seed is "Crackiceboom")
     seed_key = _normalize_key(seed.title, seed.artist)
-    unique = [c for c in unique if _normalize_key(c.title, c.artist) != seed_key]
+    seed_title_clean = re.sub(r"[^a-z0-9]", "", seed.title.lower())
+    def _title_too_similar(c: CandidateSong) -> bool:
+        t = re.sub(r"[^a-z0-9]", "", c.title.lower())
+        return (seed_title_clean in t) or (t in seed_title_clean)
+    unique = [
+        c for c in unique
+        if _normalize_key(c.title, c.artist) != seed_key and not _title_too_similar(c)
+    ]
 
     logger.info(f"Total unique candidates: {len(unique)}")
     return unique[:target_count]
