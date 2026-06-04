@@ -211,7 +211,7 @@ async def _verify_youtube_against_discogs(
     Survivors are enriched with have count, underground score, and style tags
     from the matched Discogs release. Candidates with no Discogs match are dropped.
     """
-    sem = asyncio.Semaphore(5)  # authenticated limit is 60 req/min; 5 concurrent is safe
+    sem = asyncio.Semaphore(3)  # stay under Discogs 60 req/min limit
 
     async def _check(c: CandidateSong) -> Optional[CandidateSong]:
         async with sem:
@@ -312,19 +312,15 @@ async def _fetch_discogs_candidates(
             for lbl in labels if lbl.get("id")
         }
 
-        label_task = _discogs_label_releases(
+        label_candidates = await _discogs_label_releases(
             label_ids[:2], label_names_by_id, all_tags, client
         )
-        artist_task = _discogs_artist_releases(
+        candidates.extend(label_candidates)
+
+        artist_candidates = await _discogs_artist_releases(
             seed.artist, client, styles=all_tags
         )
-        label_candidates, artist_candidates = await asyncio.gather(
-            label_task, artist_task, return_exceptions=True
-        )
-        if not isinstance(label_candidates, Exception):
-            candidates.extend(label_candidates)
-        if not isinstance(artist_candidates, Exception):
-            candidates.extend(artist_candidates)
+        candidates.extend(artist_candidates)
 
     except Exception as e:
         logger.warning(f"Discogs fetch failed: {e}")
