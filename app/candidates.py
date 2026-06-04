@@ -601,48 +601,19 @@ async def enrich_candidates(
     max_enrich: int = 10,
 ) -> list[CandidateSong]:
     """
-    Enrich candidates with audio features and Discogs style/have-count data.
+    Enrich candidates with Discogs style tags and have-count data.
 
-    Phase 1 — MBID resolution (sequential, MB rate-limited)
-      Only for YouTube candidates; Discogs candidates don't need MBIDs.
+    MBID resolution and AcousticBrainz lookups have been removed — AcousticBrainz
+    has been mostly offline since 2022, so the audio score fell back to a neutral
+    0.5 for nearly every track anyway. The sequential MusicBrainz rate-limit sleeps
+    (1.1s per candidate) were the single biggest contributor to cold query latency.
+    Audio enrichment can be re-wired here when a live replacement is available.
 
-    Phase 2 — AcousticBrainz BPM/key lookups (parallel)
-      Uses resolved MBIDs to fetch audio features.
-
-    Phase 3 — Discogs per-release style + have-count enrichment (parallel)
+    Phase — Discogs per-release style + have-count enrichment (parallel)
       Fetches actual style tags and community.have for each Discogs candidate.
       Overwrites the placeholder underground_score with the have-count formula.
     """
-    from app.fingerprint import _resolve_mbid, _fetch_acousticbrainz
-
-    # Phases 1–2: audio features for YouTube candidates
-    yt_targets = [c for c in candidates[:max_enrich] if c.source == "youtube"]
-
-    for c in yt_targets:
-        if not c.mbid:
-            try:
-                c.mbid = await _resolve_mbid(c.title, c.artist, client)
-                await asyncio.sleep(1.1)
-            except Exception as e:
-                logger.debug(f"MBID resolution failed for {c.display_name}: {e}")
-
-    async def _fetch_ab(c: CandidateSong) -> None:
-        if not c.mbid:
-            return
-        try:
-            ab_data = await _fetch_acousticbrainz(c.mbid, client)
-            if ab_data:
-                ll = ab_data.get("low_level", {})
-                c.bpm = float(ll.get("rhythm", {}).get("bpm", 0.0))
-                c.key = ll.get("tonal", {}).get("key_key", "unknown") or "unknown"
-                c.mode = ll.get("tonal", {}).get("key_scale", "unknown") or "unknown"
-                c.has_audio_features = c.bpm > 0
-        except Exception as e:
-            logger.debug(f"AB fetch failed for {c.display_name}: {e}")
-
-    await asyncio.gather(*[_fetch_ab(c) for c in yt_targets])
-
-    # Phase 3: Discogs style + have-count enrichment
+    # Discogs style + have-count enrichment
     discogs_targets = [
         c for c in candidates[:max_enrich]
         if c.source == "discogs" and c.raw_metadata.get("discogs_id")
