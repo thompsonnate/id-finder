@@ -216,27 +216,34 @@ async def _verify_youtube_against_discogs(
     async def _check(c: CandidateSong) -> Optional[CandidateSong]:
         async with sem:
             try:
-                release = await _discogs_search_release(c.title, c.artist, client)
-                if not release:
+                # Single search call — just enough to confirm the track exists on
+                # Discogs and grab style tags + release ID. The full release detail
+                # (community.have, etc.) is fetched in the enrichment phase which
+                # already does per-release calls for all Discogs candidates.
+                resp = await client.get(
+                    f"{DISCOGS_BASE}/database/search",
+                    params={"q": f"{c.title} {c.artist}", "type": "release", "per_page": 3},
+                    headers=DISCOGS_HEADERS,
+                    timeout=10.0,
+                )
+                resp.raise_for_status()
+                results = resp.json().get("results", [])
+                if not results:
                     logger.debug(f"No Discogs match — dropping YT candidate: {c.display_name}")
                     return None
 
-                # Enrich with Discogs community data
-                have_count = (release.get("community") or {}).get("have", 0)
-                c.discogs_have_count = have_count
-                c.underground_score = _compute_underground_score_discogs(have_count)
-
-                # Replace genre tags with Discogs style tags (more granular)
-                styles = [s.lower() for s in (release.get("styles") or [])]
-                genres = [g.lower() for g in (release.get("genres") or [])]
-                if styles or genres:
-                    c.genre_tags = list(dict.fromkeys(styles + genres))
-
-                release_id = release.get("id")
+                best = results[0]
+                release_id = best.get("id")
                 if release_id:
                     c.raw_metadata["discogs_id"] = release_id
 
-                await asyncio.sleep(0.3)
+                # Search results include style/genre arrays — use them now;
+                # enrichment phase will overwrite with full release data
+                styles = [s.lower() for s in (best.get("style") or [])]
+                genres = [g.lower() for g in (best.get("genre") or [])]
+                if styles or genres:
+                    c.genre_tags = list(dict.fromkeys(styles + genres))
+
                 return c
             except Exception as e:
                 logger.debug(f"Discogs verification failed for {c.display_name}: {e}")
@@ -492,12 +499,9 @@ async def _fetch_youtube_candidates(
         queries.append(f"{seed.title} {seed.artist}")
         queries.append(f"{seed.artist} original mix")
 
-    candidates = []
-    for query in queries:
-        results = await _yt_search(query, max_results=10)
-        candidates.extend(results)
-        if len(candidates) >= count:
-            break
+    # Run all queries in parallel — each is an independent yt-dlp subprocess
+    results = await asyncio.gather(*[_yt_search(q, max_results=10) for q in queries])
+    candidates = [c for batch in results for c in batch]
 
     return candidates[:count]
 
