@@ -101,14 +101,17 @@ def _compute_underground_score_discogs(have_count: int) -> float:
     Exponential decay based on Discogs community 'Have' count.
 
     Calibrated so:
-      50 haves   → ~85%  (very underground, few collectors own it)
-      1500 haves → ~10%  (well-known in the scene)
+      50 haves   → ~85%  (very underground)
+      280 haves  → ~51%  (moderate collection)
+      1000 haves → ~10%  (well-known in the scene)
 
+    Steeper than the previous curve to ensure meaningful spread across the
+    range of have counts typically seen on underground electronic releases.
     Clamped to [0.05, 0.95] to avoid hard zeroes/ones.
     """
     if have_count <= 0:
         return 0.90  # no data → assume obscure
-    score = 0.915 * math.exp(-0.001476 * have_count)
+    score = 0.95 * math.exp(-0.00225 * have_count)
     return max(0.05, min(0.95, score))
 
 

@@ -228,9 +228,9 @@ def _detect_family(tags: list) -> Optional[str]:
 # ── Scoring weights (must sum to 1.0) ────────────────────────────────────────
 
 WEIGHTS = {
-    "audio":       0.40,
-    "genre":       0.40,
-    "underground": 0.20,
+    "audio":       0.35,
+    "genre":       0.35,
+    "underground": 0.30,
 }
 
 # BPM tolerance: scores decay from 1.0 → 0.0 over this range (in BPM)
