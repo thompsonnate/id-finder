@@ -134,6 +134,97 @@ def _normalize_tag(tag) -> str:
 
 logger = logging.getLogger(__name__)
 
+# ── Broad genre families ──────────────────────────────────────────────────────
+#
+# Used as a hard pre-filter: if the seed maps to a known family and a candidate
+# maps to a *different* family, the candidate is dropped before scoring.
+# Candidates with no genre data are always kept (don't penalise missing data).
+
+BROAD_GENRE_FAMILIES: dict[str, str] = {
+    # Electronic
+    "electronic": "electronic", "techno": "electronic", "house": "electronic",
+    "tech-house": "electronic", "tech house": "electronic",
+    "deep house": "electronic", "minimal techno": "electronic",
+    "minimal": "electronic", "dub techno": "electronic",
+    "drum and bass": "electronic", "drum n bass": "electronic",
+    "drum n' bass": "electronic", "dnb": "electronic", "d&b": "electronic",
+    "jungle": "electronic", "breakbeat": "electronic", "breaks": "electronic",
+    "ambient": "electronic", "ambient techno": "electronic",
+    "downtempo": "electronic", "chillout": "electronic",
+    "trance": "electronic", "psytrance": "electronic", "goa trance": "electronic",
+    "idm": "electronic", "intelligent dance music": "electronic",
+    "glitch": "electronic", "electronica": "electronic",
+    "dubstep": "electronic", "uk garage": "electronic", "grime": "electronic",
+    "bassline": "electronic", "2-step": "electronic",
+    "electro": "electronic", "synthwave": "electronic",
+    "ebm": "electronic", "industrial": "electronic",
+    "electroclash": "electronic", "italo disco": "electronic",
+    "lo-fi house": "electronic", "lo-fi": "electronic",
+    "trip-hop": "electronic", "trip hop": "electronic",
+    "big beat": "electronic", "nu skool breaks": "electronic",
+    "hard techno": "electronic", "acid techno": "electronic",
+    "progressive house": "electronic", "afro house": "electronic",
+    "microhouse": "electronic", "neurofunk": "electronic",
+    "liquid dnb": "electronic", "halftime": "electronic",
+
+    # Rock / Guitar-driven
+    "rock": "rock", "indie rock": "rock", "alternative rock": "rock",
+    "alternative": "rock", "punk": "rock", "punk rock": "rock",
+    "hard rock": "rock", "metal": "rock", "heavy metal": "rock",
+    "classic rock": "rock", "psychedelic rock": "rock",
+    "progressive rock": "rock", "grunge": "rock", "post-rock": "rock",
+    "math rock": "rock", "noise rock": "rock", "shoegaze": "rock",
+    "new wave": "rock", "post-punk": "rock", "indie pop": "rock",
+
+    # Hip-hop / Rap
+    "hip-hop": "hip-hop", "hip hop": "hip-hop", "rap": "hip-hop",
+    "trap": "hip-hop", "drill": "hip-hop", "grime rap": "hip-hop",
+    "boom bap": "hip-hop", "lo-fi hip hop": "hip-hop",
+    "conscious hip-hop": "hip-hop", "crunk": "hip-hop",
+
+    # R&B / Soul / Funk
+    "r&b": "rnb", "rnb": "rnb", "soul": "rnb", "funk": "rnb",
+    "neo soul": "rnb", "contemporary r&b": "rnb", "motown": "rnb",
+    "gospel": "rnb", "new jack swing": "rnb",
+
+    # Jazz
+    "jazz": "jazz", "bebop": "jazz", "cool jazz": "jazz",
+    "free jazz": "jazz", "fusion": "jazz", "jazz fusion": "jazz",
+    "acid jazz": "jazz", "nu jazz": "jazz", "smooth jazz": "jazz",
+
+    # Classical / Orchestral
+    "classical": "classical", "orchestral": "classical", "opera": "classical",
+    "chamber music": "classical", "baroque": "classical",
+    "contemporary classical": "classical", "minimalism": "classical",
+
+    # Pop
+    "pop": "pop", "dance pop": "pop", "synth-pop": "pop",
+    "electropop": "pop", "k-pop": "pop",
+
+    # Folk / Country / Americana
+    "folk": "folk", "country": "folk", "bluegrass": "folk",
+    "americana": "folk", "singer-songwriter": "folk",
+
+    # Reggae / Dub
+    "reggae": "reggae", "dub": "reggae", "dancehall": "reggae",
+    "ska": "reggae", "roots reggae": "reggae",
+}
+
+
+def _detect_family(tags: list) -> Optional[str]:
+    """
+    Return the broad genre family for a tag list, or None if undetermined.
+    Uses the first recognised tag so ordering matters — put the most specific
+    tags first (Discogs style tags are already ordered most-to-least specific).
+    """
+    for tag in tags:
+        t = _normalize_tag(tag)
+        family = BROAD_GENRE_FAMILIES.get(t)
+        if family:
+            return family
+    return None
+
+
 # ── Scoring weights (must sum to 1.0) ────────────────────────────────────────
 
 WEIGHTS = {
@@ -210,6 +301,19 @@ def score_and_rank(
     """
     if not candidates:
         return []
+
+    # Hard genre-family filter — drop candidates confidently in a different
+    # broad family than the seed. Candidates with no genre data are kept.
+    seed_family = _detect_family(seed.genre_tags or [])
+    if seed_family:
+        def _keep(c: CandidateSong) -> bool:
+            cand_family = _detect_family(c.genre_tags or [])
+            return cand_family is None or cand_family == seed_family
+        before = len(candidates)
+        candidates = [c for c in candidates if _keep(c)]
+        dropped = before - len(candidates)
+        if dropped:
+            logger.info(f"Genre family filter ({seed_family}): dropped {dropped} out-of-family candidates")
 
     scored = []
     for c in candidates:
