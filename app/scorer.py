@@ -177,8 +177,6 @@ class ScoredResult:
 
     genre_tags: list = field(default_factory=list)
     mood_tags: list = field(default_factory=list)
-    mastered_by: list = field(default_factory=list)
-    distributed_by: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -192,8 +190,6 @@ class ScoredResult:
             "is_underground": self.is_underground,
             "view_count": self.view_count,
             "same_label": self.same_label,
-            "mastered_by": self.mastered_by,
-            "distributed_by": self.distributed_by,
             "breakdown": {
                 "audio": round(self.score_audio * 100, 1),
                 "genre": round(self.score_genre * 100, 1),
@@ -269,8 +265,6 @@ def score_and_rank(
             is_underground=c.is_underground,
             view_count=c.view_count,
             same_label=c.same_label,
-            mastered_by=c.mastered_by,
-            distributed_by=c.distributed_by,
             score_audio=s_audio,
             score_genre=s_genre,
             score_underground=s_under,

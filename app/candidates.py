@@ -72,8 +72,6 @@ class CandidateSong:
     underground_score: float = 0.0       # computed from Discogs have count
     same_label: bool = False             # True if from the same label as the seed
     discogs_have_count: Optional[int] = None
-    mastered_by: list = field(default_factory=list)
-    distributed_by: list = field(default_factory=list)
     raw_metadata: dict = field(default_factory=dict)
 
     # Audio features populated by enrich_candidates()
@@ -686,21 +684,6 @@ async def _enrich_discogs_styles(
                 have_count = (data.get("community") or {}).get("have", 0)
                 c.discogs_have_count = have_count
                 c.underground_score = _compute_underground_score_discogs(have_count)
-
-                extraartists = data.get("extraartists") or []
-                companies = data.get("companies") or []
-                logger.info(f"Release {release_id} extraartists roles: {[a.get('role') for a in extraartists]}")
-                logger.info(f"Release {release_id} company types: {[co.get('entity_type_name') for co in companies]}")
-
-                c.mastered_by = [
-                    a["name"] for a in extraartists
-                    if "mastered" in (a.get("role") or "").lower()
-                ]
-                c.distributed_by = [
-                    co["name"] for co in companies
-                    if "distributed" in (co.get("entity_type_name") or "").lower()
-                ]
-                logger.info(f"Release {release_id} → mastered_by={c.mastered_by}, distributed_by={c.distributed_by}")
 
                 await asyncio.sleep(0.2)
             except Exception as e:
