@@ -177,6 +177,8 @@ class ScoredResult:
 
     genre_tags: list = field(default_factory=list)
     mood_tags: list = field(default_factory=list)
+    mastered_by: list = field(default_factory=list)
+    distributed_by: list = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -190,6 +192,8 @@ class ScoredResult:
             "is_underground": self.is_underground,
             "view_count": self.view_count,
             "same_label": self.same_label,
+            "mastered_by": self.mastered_by,
+            "distributed_by": self.distributed_by,
             "breakdown": {
                 "audio": round(self.score_audio * 100, 1),
                 "genre": round(self.score_genre * 100, 1),
@@ -228,20 +232,27 @@ def score_and_rank(
     # Sort descending by weighted score
     scored.sort(key=lambda x: x[0], reverse=True)
 
-    # Diversity filter: allow at most MAX_PER_ARTIST results per artist so a
-    # single label or prolific artist doesn't flood the top 10. The highest-
-    # scoring result(s) for each artist are kept; the rest are dropped.
+    # Diversity filter: cap per-artist AND total same-label results so a single
+    # label or prolific artist doesn't flood the top 10.
     MAX_PER_ARTIST = 2
+    MAX_SAME_LABEL = 4   # at most 4 of the top 10 can be same-label candidates
     artist_counts: dict[str, int] = {}
+    same_label_count = 0
     diverse: list = []
     for entry in scored:
+        c = entry[4]
         # Normalise joint credits ("Artist A / Artist B", "A & B", "A, B")
         # so they don't bypass the per-artist cap
-        raw = entry[4].artist.lower().strip()
+        raw = c.artist.lower().strip()
         artist_key = re.split(r"[/,&]|\bfeat\b|\bvs\b", raw)[0].strip()
-        if artist_counts.get(artist_key, 0) < MAX_PER_ARTIST:
-            diverse.append(entry)
-            artist_counts[artist_key] = artist_counts.get(artist_key, 0) + 1
+        if artist_counts.get(artist_key, 0) >= MAX_PER_ARTIST:
+            continue
+        if c.same_label and same_label_count >= MAX_SAME_LABEL:
+            continue
+        diverse.append(entry)
+        artist_counts[artist_key] = artist_counts.get(artist_key, 0) + 1
+        if c.same_label:
+            same_label_count += 1
         if len(diverse) >= top_n:
             break
 
@@ -258,6 +269,8 @@ def score_and_rank(
             is_underground=c.is_underground,
             view_count=c.view_count,
             same_label=c.same_label,
+            mastered_by=c.mastered_by,
+            distributed_by=c.distributed_by,
             score_audio=s_audio,
             score_genre=s_genre,
             score_underground=s_under,

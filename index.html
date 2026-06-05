@@ -227,6 +227,22 @@
     .badge-discogs  { background: #1a1520; color: #c084fc; }
     .badge-underground { background: #2a1500; color: var(--underground); }
     .badge-samelabel   { background: #0f2a1a; color: #4ade80; }
+
+    .card-credits {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.3rem;
+    }
+    .credit-tag {
+      font-size: 0.72rem;
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1rem 0.45rem;
+    }
+    .credit-tag span { color: var(--text); }
     .badge-views {
       font-size: 0.72rem;
       color: var(--muted);
@@ -497,6 +513,7 @@
         <div class="card-body">
           <div class="card-title">${esc(r.title)}</div>
           <div class="card-artist">${esc(r.artist)}</div>
+          ${buildCredits(r)}
           <div class="badges">${sourceBadge}${undergroundBadge}${sameLabelBadge}${viewsBadge}</div>
           <div class="breakdown">${bars}</div>
         </div>
@@ -506,6 +523,15 @@
           ${playLink}
         </div>
       </div>`;
+  }
+
+  function buildCredits(r) {
+    const tags = [];
+    if (r.mastered_by?.length)
+      tags.push(`<span class="credit-tag">Mastered by: <span>${r.mastered_by.slice(0,2).map(esc).join(", ")}</span></span>`);
+    if (r.distributed_by?.length)
+      tags.push(`<span class="credit-tag">Distributed by: <span>${r.distributed_by.slice(0,1).map(esc).join(", ")}</span></span>`);
+    return tags.length ? `<div class="card-credits">${tags.join("")}</div>` : "";
   }
 
   function buildPlayLink(r) {
